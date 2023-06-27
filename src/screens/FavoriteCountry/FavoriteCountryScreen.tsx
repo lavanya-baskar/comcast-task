@@ -1,6 +1,6 @@
 /* eslint-disable react-native/no-inline-styles */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   SafeAreaView,
   View,
@@ -12,15 +12,19 @@ import {
 import styles from './styles';
 import { useTheme } from '../../hooks';
 import { ApplicationScreenProps } from 'MyApp/@types/navigation';
+import { CountryContext } from '../../services/CountryContext';
 
 const FavoriteCountryScreen = ({ navigation }: ApplicationScreenProps) => {
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
+  const { selectedFavCountry, setFavCountryName } = useContext(CountryContext);
   const { darkMode: isDark, Images } = useTheme();
 
+  // Retrieve favorite country list from local cache during initial render
   useEffect(() => {
     retrieveFavoriteCountries();
   }, []);
 
+  // Retrieve favorite country list from local cache
   const retrieveFavoriteCountries = async () => {
     try {
       const storedFavoriteCountries = await AsyncStorage.getItem(
@@ -30,10 +34,11 @@ const FavoriteCountryScreen = ({ navigation }: ApplicationScreenProps) => {
         setFavoriteCountries(JSON.parse(storedFavoriteCountries));
       }
     } catch (error) {
-      console.log('Error retrieving favorite countries:', error);
+      // handle error
     }
   };
 
+  // Remove country from favorite list and update to local cache
   const removeCountryFromFav = async (countryName: string) => {
     try {
       let updatedFavoriteCountries = [...favoriteCountries];
@@ -46,7 +51,7 @@ const FavoriteCountryScreen = ({ navigation }: ApplicationScreenProps) => {
         JSON.stringify(updatedFavoriteCountries),
       );
     } catch (error) {
-      console.log('Error removing country from favorites:', error);
+      // handle error
     }
   };
 
@@ -60,7 +65,10 @@ const FavoriteCountryScreen = ({ navigation }: ApplicationScreenProps) => {
           borderWidth: 0.5,
         },
       ]}
-      onPress={() => {}}
+      onPress={() => {
+        setFavCountryName(item);
+        navigation.goBack();
+      }}
     >
       <Text style={[styles.countryText, isDark && { color: 'white' }]}>
         {item}

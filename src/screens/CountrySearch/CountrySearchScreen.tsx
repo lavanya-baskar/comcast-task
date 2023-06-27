@@ -1,8 +1,5 @@
-/* eslint-disable react-native/no-inline-styles */
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable eqeqeq */
-import React, { useState, useEffect } from 'react';
-import styles from './styles';
+import React, { useState, useEffect, useContext } from "react";
+import styles from "./styles";
 import {
   SafeAreaView,
   View,
@@ -12,14 +9,15 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { fetchCountryData } from '../../services/countryService';
-import { useTheme } from '../../hooks';
-import { ApplicationScreenProps } from 'MyApp/@types/navigation';
-import { ScrollView } from 'react-native-gesture-handler';
-import { SvgUri } from 'react-native-svg';
-import CountryDetailsCard from 'MyApp/src/components/CountryDetailsCard';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SvgUri } from "react-native-svg";
+import { ApplicationScreenProps } from "MyApp/@types/navigation";
+import { fetchCountryData } from "../../services/countryService";
+import { useTheme } from "../../hooks";
+import { CountryContext } from "../../services/CountryContext";
+import CountryDetailsCard from "../../components/CountryDetailsCard/index";
 
 interface FlagData {
   png: string;
@@ -61,41 +59,44 @@ interface CountryData {
 }
 
 const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
-  const [countryName, setCountryName] = useState('');
+  const [countryName, setCountryName] = useState("");
   const [countryData, setCountryData] = useState<CountryData[] | null>(null);
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddedToFavorite, setIsAddedToFavorite] = useState(false);
-  const [currencyName, setCurrencyName] = useState('');
-  const [currencySymbol, setCurrencySymbol] = useState('');
-  const [areaInSquareKilometers, setAreaInSquareKilometers] = useState('');
-  const [areaInSquareMiles, setAreaInSquareMiles] = useState('');
+  const [currencyName, setCurrencyName] = useState("");
+  const [currencySymbol, setCurrencySymbol] = useState("");
+  const [areaInSquareKilometers, setAreaInSquareKilometers] = useState("");
+  const [areaInSquareMiles, setAreaInSquareMiles] = useState("");
   const [isShowPlaceHolder, shouldShowPlaceholder] = useState(true);
+  const { selectedFavCountry, setFavCountryName } = useContext(CountryContext);
   const { darkMode: isDark, Images } = useTheme();
 
+  // To Retrieve favorite country list from cache to handle isAddedToFavorite value
   useEffect(() => {
     const retrieveFavoriteCountries = async () => {
       try {
         const storedFavoriteCountries = await AsyncStorage.getItem(
-          'favoriteCountries',
+          "favoriteCountries"
         );
         if (storedFavoriteCountries) {
           setFavoriteCountries(JSON.parse(storedFavoriteCountries));
         }
       } catch (error) {
-        console.log('Error retrieving favorite countries:', error);
+        // Handle error
       }
     };
-    retrieveFavoriteCountries(); // Call the function initially
+    retrieveFavoriteCountries(); // Call the function during initial render
     const onScreenFocus = () => {
       retrieveFavoriteCountries(); // Call the function when screen is focused
     };
     // Subscribe to the focus event
-    const unsubscribe = navigation.addListener('focus', onScreenFocus);
+    const unsubscribe = navigation.addListener("focus", onScreenFocus);
     // Clean up the subscription when the component unmounts
     return () => unsubscribe();
   }, [navigation]);
 
+  // To get currency and area info after getting response from API
   useEffect(() => {
     if (countryData) {
       getCurrency();
@@ -103,14 +104,35 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
     }
   }, [countryData]);
 
+
+  // To clear search input field if countryName is empty
   useEffect(() => {
-    if (countryName == '') {
+    if (countryName == "") {
       clearSearch();
     }
   }, [countryName]);
 
+  // To show country details if user select any country from favorite list based on selectedFavCountry context value
+  useEffect(() => {
+    if (selectedFavCountry !== "") {
+      showCountryDetails(selectedFavCountry);
+    }
+  }, [selectedFavCountry]);
+
+  // Set country data selectedFavCountry value gets changed 
+  const showCountryDetails = async (countryName: string) => {
+    setCountryName(selectedFavCountry);
+    const cachedData = await retrieveData(countryName);
+    setIsAddedToFavorite(true);
+    if (cachedData) {
+      setCountryData(cachedData);
+    }
+  };
+
+  // retrieve country data from API or cache
   const handleSearch = async () => {
-    if (countryName !== '') {
+    setCountryData(null);
+    if (countryName !== "") {
       setIsLoading(true);
       try {
         const cachedData = await retrieveData(countryName);
@@ -128,27 +150,30 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
         setIsLoading(false);
         shouldShowPlaceholder(false);
       } catch (error) {
-        Alert.alert('Error', 'Something went wrong.');
+        Alert.alert("Error", "Something went wrong.");
         setIsLoading(false);
         shouldShowPlaceholder(false);
       }
     }
   };
 
+  // Reset fields
   const clearSearch = () => {
-    // setCountryName('');
+    setCountryName("");
     setCountryData(null);
     shouldShowPlaceholder(true);
   };
 
+  // Get and formate language
   const getLanguages = () => {
     if (countryData && countryData.length > 0) {
       const languages = Object.values(countryData[0].languages);
-      return languages.join(', ');
+      return languages.join(", ");
     }
-    return '';
+    return "";
   };
 
+  // Get and formate currency value
   const getCurrency = () => {
     if (countryData && countryData.length > 0) {
       const currencies = countryData[0].currencies;
@@ -156,26 +181,29 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
       setCurrencyName(currencies[currencyCode].name);
       setCurrencySymbol(currencies[currencyCode].symbol);
     }
-    return '';
+    return "";
   };
 
+  // Get and calculate Area in km and miles
   const getArea = () => {
     if (countryData && countryData.length > 0) {
       const area = countryData[0].area;
       setAreaInSquareKilometers(area.toFixed(2));
       setAreaInSquareMiles((area * 0.386102).toFixed(2));
     }
-    return '';
+    return "";
   };
 
+  // Add API response to local cache
   const storeData = async (key: string, data: any) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
-      console.log('...........>error to save');
+      // Handle error
     }
   };
 
+  // Retrieve search result by local cache
   const retrieveData = async (key: string) => {
     try {
       const data = await AsyncStorage.getItem(key);
@@ -186,6 +214,7 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
     }
   };
 
+  // Add or remove favorite country to cache
   const handleAddToFavorite = async () => {
     try {
       if (!countryData) {
@@ -193,71 +222,70 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
       }
       const countryName = countryData[0].name.common;
       const isCountryFavorite = favoriteCountries.includes(countryName);
-
       let updatedFavoriteCountries = [...favoriteCountries];
-
       if (isCountryFavorite) {
         // Remove the country from the favorite list
         updatedFavoriteCountries = updatedFavoriteCountries.filter(
-          country => country !== countryName,
+          (country) => country !== countryName
         );
       } else {
         // Add the country to the favorite list
         updatedFavoriteCountries.push(countryName);
       }
-
       setFavoriteCountries(updatedFavoriteCountries);
-      setIsAddedToFavorite(!isCountryFavorite); // Toggle the flag based on the country's current status
+      setIsAddedToFavorite(!isCountryFavorite);
 
       // Store the updated favorite country list in storage
       await AsyncStorage.setItem(
-        'favoriteCountries',
-        JSON.stringify(updatedFavoriteCountries),
+        "favoriteCountries",
+        JSON.stringify(updatedFavoriteCountries)
       );
     } catch (error) {
-      console.log('Error adding/removing country from favorites:', error);
+      // Handle error
     }
   };
 
+  // Navigate to favorite country list screen
   const navigateToFavList = () => {
     clearSearch();
-    navigation.navigate('FavoriteCountryScreen', { country: 'countryName' });
+    setFavCountryName("");
+    navigation.navigate("FavoriteCountryScreen", { country: "countryName" });
   };
 
   return (
     <SafeAreaView
-      style={[styles.containerStyle, isDark && { backgroundColor: '#0f0614' }]}
+      style={[styles.containerStyle, isDark && { backgroundColor: "#0f0614" }]}
     >
       <View
         style={[
           styles.containerStyle,
-          isDark && { backgroundColor: '#0f0614' },
+          isDark && { backgroundColor: "#0f0614" },
         ]}
       >
         <View
-          style={[styles.headerView, isDark && { backgroundColor: '#6e6178' }]}
+          style={[styles.headerView, isDark && { backgroundColor: "#6e6178" }]}
         >
           <View
             style={[
               styles.inputContainer,
               isDark && {
-                backgroundColor: 'rgba(255, 255, 255, 0)',
-                borderColor: 'rgba(255, 255, 255, 0.6)',
+                backgroundColor: "rgba(255, 255, 255, 0)",
+                borderColor: "rgba(255, 255, 255, 0.6)",
                 borderWidth: 1,
               },
             ]}
           >
             <TextInput
               placeholder="Enter a country name"
-              placeholderTextColor={'#999c9e'}
-              style={[styles.textInput, isDark && { color: 'white' }]}
+              placeholderTextColor={"#999c9e"}
+              style={[styles.textInput, isDark && { color: "white" }]}
               value={countryName}
               onChangeText={setCountryName}
               onEndEditing={handleSearch}
               maxLength={100}
               autoCorrect={false}
             />
-            {countryName !== '' && (
+            {countryName !== "" && (
               <TouchableOpacity onPress={clearSearch}>
                 <Image
                   source={isDark ? Images.icons.closeDark : Images.icons.close}
@@ -275,8 +303,8 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
             style={[
               styles.countryCardContainer,
               isDark && {
-                backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                borderColor: 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: "rgba(0, 0, 0, 0.4)",
+                borderColor: "rgba(255, 255, 255, 0.5)",
                 borderWidth: 0.6,
               },
             ]}
@@ -291,44 +319,44 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
                   />
                 </View>
                 <Text
-                  style={[styles.countryName, isDark && { color: 'white' }]}
+                  style={[styles.countryName, isDark && { color: "white" }]}
                 >
                   {countryData[0].name.common}
                 </Text>
               </View>
               <CountryDetailsCard
-                titleText={'Capital'}
+                titleText={"Capital"}
                 value={countryData[0].capital[0]}
                 icon={isDark ? Images.icons.countryDark : Images.icons.country}
               />
               <CountryDetailsCard
-                titleText={'Population'}
+                titleText={"Population"}
                 value={countryData[0].population.toLocaleString()}
                 icon={
                   isDark ? Images.icons.populationDark : Images.icons.population
                 }
               />
               <CountryDetailsCard
-                titleText={'Area'}
+                titleText={"Area"}
                 value={`${areaInSquareKilometers} km² \n${areaInSquareMiles} sq mi`}
                 icon={isDark ? Images.icons.areaDark : Images.icons.area}
               />
               <CountryDetailsCard
-                titleText={'Languages spoken'}
+                titleText={"Languages spoken"}
                 value={getLanguages()}
                 icon={
                   isDark ? Images.icons.languageDark : Images.icons.language
                 }
               />
               <CountryDetailsCard
-                titleText={'Timezone(s)'}
-                value={countryData[0].timezones.join(', ')}
+                titleText={"Timezone(s)"}
+                value={countryData[0].timezones.join(", ")}
                 icon={
                   isDark ? Images.icons.timezoneDark : Images.icons.timezone
                 }
               />
               <CountryDetailsCard
-                titleText={'Currency'}
+                titleText={"Currency"}
                 value={currencyName}
                 isCurrency={true}
                 currencySymbol={currencySymbol}
@@ -342,10 +370,10 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
                     <Image source={Images.icons.fav} style={styles.icon} />
                   </View>
                   <View style={styles.favContainer}>
-                    <Text style={[styles.value, isDark && { color: 'white' }]}>
+                    <Text style={[styles.value, isDark && { color: "white" }]}>
                       {isAddedToFavorite
-                        ? 'Remove to favorite'
-                        : 'Add to favorite'}
+                        ? "Remove to favorite"
+                        : "Add to favorite"}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -359,8 +387,8 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
             ) : (
               <Text style={styles.placeholderText}>
                 {isShowPlaceHolder
-                  ? 'Explore countries by searching their names'
-                  : 'No country found'}
+                  ? "Explore countries by searching their names"
+                  : "No country found"}
               </Text>
             )}
           </View>
