@@ -5,12 +5,16 @@ interface CountryContextProps {
   setFavCountryName: React.Dispatch<React.SetStateAction<string>>;
 }
 
+export interface CountryProviderProps {
+  children: ReactNode;
+}
+
 export const CountryContext = createContext<CountryContextProps>({
   selectedFavCountry: '',
   setFavCountryName: () => {},
 });
 
-export const CountryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const CountryProvider = ({ children }: CountryProviderProps) => {
   const [selectedFavCountry, setFavCountryName] = useState('');
 
   return (

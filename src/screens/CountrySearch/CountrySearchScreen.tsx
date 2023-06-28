@@ -18,6 +18,7 @@ import { fetchCountryData } from "../../services/countryService";
 import { useTheme } from "../../hooks";
 import { CountryContext } from "../../services/CountryContext";
 import CountryDetailsCard from "../../components/CountryDetailsCard/index";
+import ThemeContext from "../../services/ThemeContext";
 
 interface FlagData {
   png: string;
@@ -70,7 +71,9 @@ const CountrySearchScreen = ({ navigation }: ApplicationScreenProps) => {
   const [areaInSquareMiles, setAreaInSquareMiles] = useState("");
   const [isShowPlaceHolder, shouldShowPlaceholder] = useState(true);
   const { selectedFavCountry, setFavCountryName } = useContext(CountryContext);
-  const { darkMode: isDark, Images } = useTheme();
+  const { Images } = useTheme();
+  const theme = useContext(ThemeContext);
+  const isDark = (theme === 'dark');
 
   // To Retrieve favorite country list from cache to handle isAddedToFavorite value
   useEffect(() => {

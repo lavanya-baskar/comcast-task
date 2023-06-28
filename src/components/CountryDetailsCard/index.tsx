@@ -1,10 +1,9 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react/require-default-props */
 // React
-import React from 'react';
+import React, { useContext } from 'react';
 import { Text, View, Image } from 'react-native';
-import { useTheme } from '../../hooks';
-
+import ThemeContext from '../../services/ThemeContext';
 // Styles
 import styles from './styles';
 
@@ -43,7 +42,8 @@ const CountryDetailsCard: React.FC<CountryDetailsCardProps> = ({
   isCurrency = false,
   currencySymbol = '',
 }) => {
-  const { darkMode: isDark } = useTheme();
+  const theme = useContext(ThemeContext);
+  const isDark = (theme === 'dark');
   return (
     <View style={styles.card}>
       {isCurrency ? (

@@ -13,12 +13,15 @@ import styles from './styles';
 import { useTheme } from '../../hooks';
 import { ApplicationScreenProps } from 'MyApp/@types/navigation';
 import { CountryContext } from '../../services/CountryContext';
+import ThemeContext from "../../services/ThemeContext";
 
 const FavoriteCountryScreen = ({ navigation }: ApplicationScreenProps) => {
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
   const { selectedFavCountry, setFavCountryName } = useContext(CountryContext);
-  const { darkMode: isDark, Images } = useTheme();
-
+  const { Images } = useTheme();
+  const theme = useContext(ThemeContext);
+  const isDark = (theme === 'dark');
+  
   // Retrieve favorite country list from local cache during initial render
   useEffect(() => {
     retrieveFavoriteCountries();
